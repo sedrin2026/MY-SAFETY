@@ -17,7 +17,9 @@
       <input id="masterPassword" class="input" type="password" autocomplete="current-password"
              placeholder="マスターパスワード" enterkeyhint="go">
       <button id="unlockBtn" class="primary">ロック解除</button>
+      <button id="passkeyUnlockBtn" class="secondary hidden" type="button">🔑 パスキーで解除</button>
       <button id="setupBtn" class="secondary hidden">初回設定</button>
+      <p id="passkeyStatus" class="tiny"></p>
       <p id="lockError" class="error"></p>
     </section>
 
@@ -38,7 +40,10 @@
           <strong>🔐 MY SAFE</strong>
           <span id="categoryLabel" class="muted">すべて</span>
         </div>
-        <button id="lockBtn" class="small">🔒 ロック</button>
+        <div class="topbar-actions">
+          <button id="passkeyManageBtn" class="small" type="button">🔑 パスキー</button>
+          <button id="lockBtn" class="small">🔒 ロック</button>
+        </div>
       </header>
 
       <nav class="tabs">
@@ -47,6 +52,23 @@
         <button class="tab" data-category="銀行">🏦 銀行</button>
         <button class="tab" data-category="カード">💳 カード</button>
       </nav>
+
+      <section id="viewHistory" class="view-history" aria-label="閲覧履歴">
+        <div class="view-history-main">
+          <span class="view-history-title">🔓 本日の閲覧回数</span>
+          <strong id="todayViewCount">0回</strong>
+        </div>
+        <div id="lastViewedAt" class="view-history-last">最終閲覧：—</div>
+        <button id="viewHistoryBtn" class="small" type="button">履歴を見る</button>
+      </section>
+
+      <section id="viewHistoryList" class="view-history-list hidden">
+        <div class="view-history-list-head">
+          <strong>📋 閲覧履歴</strong>
+          <button id="closeHistoryBtn" class="small" type="button">閉じる</button>
+        </div>
+        <div id="historyItems"></div>
+      </section>
 
       <section id="entryList" class="entries"></section>
 
