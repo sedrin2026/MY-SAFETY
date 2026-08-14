@@ -41,7 +41,6 @@
       <div style="text-align: center; padding: 40px 0;">
         <h1 class="brand">MY SAFE</h1>
         <p class="muted">ACCESS CONTROLLED</p>
-        <!-- ロックアイコンの配置 (CSSで円形のエフェクトとアニメーションを作る) -->
         <div class="cyber-lock-icon" style="width: 150px; height: 150px; border: 2px solid var(--neon-cyan); border-radius: 50%; margin: 40px auto; display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--neon-cyan); box-shadow: 0 0 25px rgba(0,240,255,0.4); background: radial-gradient(circle, rgba(0,102,255,0.1) 0%, rgba(5,7,10,0) 70%);">🔐</div>
       </div>
 
@@ -76,4 +75,97 @@
         <button type="button" id="toggleSetupPassword2" class="small" style="margin-bottom:20px;">Show</button>
 
         <button id="createVaultBtn" class="btn-primary">Create Secure Vault</button>
-        <button id="backLockBtn" class="secondary" style="margin-top:10px;">
+        <button id="backLockBtn" class="secondary" style="margin-top:10px;">Cancel</button>
+        <div id="setupError" class="error"></div>
+      </div>
+    </section>
+
+    <!-- メイン画面 -->
+    <section id="mainScreen" class="hidden">
+      <div class="topbar">
+        <div>
+          <strong>MY SAFE</strong>
+          <span class="muted" id="lockStatusText">SECURE ACTIVE</span>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button id="searchOpenBtn" class="small">🔍 Search</button>
+          <button id="lockManualBtn" class="small">🔒 Lock</button>
+        </div>
+      </div>
+
+      <div class="tabs" id="categoryTabs">
+        <button class="tab active" data-cat="all">All</button>
+        <button class="tab" data-cat="login">Logins</button>
+        <button class="tab" data-cat="card">Cards</button>
+        <button class="tab" data-cat="memo">Memos</button>
+      </div>
+
+      <div class="entries" id="entryList">
+        <!-- エントリ一覧がここに動的に挿入されます -->
+      </div>
+
+      <button id="fabAddBtn" class="fab">+</button>
+    </section>
+
+  </div>
+
+  <!-- エントリ追加・編集モーダル -->
+  <div id="entryModal" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h2 id="modalTitle">New Entry</h2>
+        <button id="closeModalBtn" class="small">✕</button>
+      </div>
+
+      <label>Category</label>
+      <select id="entryCategory" class="input-field">
+        <option value="login">Login</option>
+        <option value="card">Card</option>
+        <option value="memo">Memo</option>
+      </select>
+
+      <label>Title</label>
+      <input type="text" id="entryTitle" class="input-field" placeholder="e.g. GitHub, Bank">
+
+      <label>Username / ID</label>
+      <input type="text" id="entryUsername" class="input-field" placeholder="user@example.com">
+
+      <label>Password / Secret</label>
+      <div class="pwrow">
+        <input type="password" id="entryPassword" class="input-field">
+        <button type="button" id="genPwBtn" class="small">Generate</button>
+        <button type="button" id="toggleModalPw" class="small">Show</button>
+      </div>
+
+      <label style="margin-top:12px;">Notes</label>
+      <textarea id="entryNotes" class="input-field" rows="3" placeholder="Additional details..."></textarea>
+
+      <div class="actions">
+        <button id="saveEntryBtn" class="btn-primary primary">Save</button>
+        <button id="deleteEntryBtn" class="danger hidden">Delete</button>
+      </div>
+      <div id="modalError" class="error"></div>
+    </div>
+  </div>
+
+  <!-- 検索モーダル -->
+  <div id="searchModal" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h2>Search Entries</h2>
+        <button id="closeSearchBtn" class="small">✕</button>
+      </div>
+      <input type="text" id="searchInput" class="input-field" placeholder="Keyword...">
+      <div id="searchResults" style="margin-top:15px; max-height:300px; overflow:auto;"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="ui-enhancements.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
