@@ -20,6 +20,9 @@ let editingId = null;
 let idleTimer = null;
 let failedAttempts = 0;
 let lockoutUntil = 0;
+const MAX_VIEW_HISTORY = 100;
+const PASSKEY_KEY = "passkey";
+const PASSKEY_PRF_SALT_BYTES = 32;
 
 const $ = id => document.getElementById(id);
 
@@ -47,6 +50,30 @@ async function dbPut(value){
   return new Promise((resolve,reject)=>{
     const tx=db.transaction(STORE,"readwrite");
     tx.objectStore(STORE).put(value,RECORD_KEY);
+    tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+  });
+}
+
+async function dbGetKey(key){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,"readonly"), req=tx.objectStore(STORE).get(key);
+    req.onsuccess=()=>resolve(req.result||null); req.onerror=()=>reject(req.error);
+  });
+}
+async function dbPutKey(key,value){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,"readwrite");
+    tx.objectStore(STORE).put(value,key);
+    tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+  });
+}
+async function dbDeleteKey(key){
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,"readwrite");
+    tx.objectStore(STORE).delete(key);
     tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
   });
 }
@@ -80,16 +107,247 @@ function hide(id){$(id).classList.add("hidden")}
 
 async function hasVault(){return !!(await dbGet());}
 
+
+function passkeySupported(){
+  return window.isSecureContext &&
+    !!window.PublicKeyCredential &&
+    !!navigator.credentials &&
+    typeof navigator.credentials.create==="function" &&
+    typeof navigator.credentials.get==="function";
+}
+
+function randomBytes(n){
+  return crypto.getRandomValues(new Uint8Array(n));
+}
+
+function arrayBufToB64(buf){
+  return bufToB64(buf);
+}
+
+function b64ToArrayBuf(s){
+  return b64ToBuf(s);
+}
+
+async function derivePasskeyWrapKey(prfBytes){
+  return crypto.subtle.importKey(
+    "raw", prfBytes, {name:"HKDF"}, false, ["deriveKey"]
+  ).then(material=>crypto.subtle.deriveKey(
+    {name:"HKDF",hash:"SHA-256",salt:new TextEncoder().encode("MY-SAFE-PASSKEY-V1"),info:new TextEncoder().encode("vault-wrap-key")},
+    material,
+    {name:"AES-GCM",length:256},
+    false,
+    ["encrypt","decrypt"]
+  ));
+}
+
+async function wrapMasterPasswordWithPrf(password,prfBytes){
+  const key=await derivePasskeyWrapKey(prfBytes);
+  const iv=randomBytes(12);
+  const plain=new TextEncoder().encode(password);
+  const cipher=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,plain);
+  return {iv:arrayBufToB64(iv),ciphertext:arrayBufToB64(cipher)};
+}
+
+async function unwrapMasterPasswordWithPrf(record,prfBytes){
+  const key=await derivePasskeyWrapKey(prfBytes);
+  const plain=await crypto.subtle.decrypt(
+    {name:"AES-GCM",iv:b64ToArrayBuf(record.iv)},
+    key,
+    b64ToArrayBuf(record.ciphertext)
+  );
+  return new TextDecoder().decode(plain);
+}
+
+function bytesToBase64Url(bytes){
+  const b=bytes instanceof ArrayBuffer?new Uint8Array(bytes):bytes;
+  let s="";
+  for(const x of b)s+=String.fromCharCode(x);
+  return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+
+async function registerPasskey(){
+  if(!passkeySupported()){
+    throw new Error("このブラウザまたは端末では、現在のパスキー方式（WebAuthn PRF）が利用できません。");
+  }
+  if(!masterKey){
+    throw new Error("先にマスターパスワードで金庫を解除してください。");
+  }
+
+  const existing=await dbGetKey(PASSKEY_KEY);
+  if(existing) throw new Error("パスキーはすでに登録されています。");
+
+  const password=window.prompt("パスキー登録の確認です。現在のマスターパスワードを入力してください。");
+  if(password===null) return;
+  const record=await dbGet();
+  try{ await decryptVault(record,password); }
+  catch(e){ throw new Error("マスターパスワードが違います。"); }
+
+  const salt=randomBytes(PASSKEY_PRF_SALT_BYTES);
+  const challenge=randomBytes(32);
+  const userId=randomBytes(32);
+
+  const credential=await navigator.credentials.create({
+    publicKey:{
+      challenge,
+      rp:{name:"MY SAFE",id:location.hostname},
+      user:{id:userId,name:"my-safe-user",displayName:"MY SAFE"},
+      pubKeyCredParams:[
+        {type:"public-key",alg:-7},
+        {type:"public-key",alg:-257}
+      ],
+      authenticatorSelection:{
+        residentKey:"required",
+        requireResidentKey:true,
+        userVerification:"required"
+      },
+      timeout:60000,
+      attestation:"none",
+      extensions:{
+        prf:{eval:{first:salt}}
+      }
+    }
+  });
+
+  const ext=credential.getClientExtensionResults?.()||{};
+  const prf=ext.prf?.results?.first;
+  if(!prf) throw new Error("この端末のパスキーはPRF機能に対応していないため、MY SAFEのローカル金庫解除には使用できません。");
+
+  const wrapped=await wrapMasterPasswordWithPrf(password,prf);
+  await dbPutKey(PASSKEY_KEY,{
+    version:1,
+    credentialId:bytesToBase64Url(credential.rawId),
+    salt:arrayBufToB64(salt),
+    iv:wrapped.iv,
+    ciphertext:wrapped.ciphertext,
+    createdAt:new Date().toISOString()
+  });
+  updatePasskeyUI();
+}
+
+async function unlockWithPasskey(){
+  const cfg=await dbGetKey(PASSKEY_KEY);
+  if(!cfg) throw new Error("パスキーが登録されていません。");
+
+  if(!passkeySupported()){
+    throw new Error("このブラウザまたは端末ではパスキー解除を利用できません。");
+  }
+
+  const challenge=randomBytes(32);
+  const credential=await navigator.credentials.get({
+    publicKey:{
+      challenge,
+      rpId:location.hostname,
+      allowCredentials:[{
+        type:"public-key",
+        id:b64ToArrayBuf(cfg.credentialId)
+      }],
+      userVerification:"required",
+      timeout:60000,
+      extensions:{
+        prf:{eval:{first:b64ToArrayBuf(cfg.salt)}}
+      }
+    }
+  });
+
+  const ext=credential.getClientExtensionResults?.()||{};
+  const prf=ext.prf?.results?.first;
+  if(!prf) throw new Error("パスキーから安全な解除キーを取得できませんでした。");
+
+  const password=await unwrapMasterPasswordWithPrf(cfg,prf);
+  const record=await dbGet();
+  const result=await decryptVault(record,password);
+
+  vault=result.data;
+  masterKey=result.key;
+  failedAttempts=0;
+  lockoutUntil=0;
+  ensureViewHistory();
+  await recordView();
+  hide("lockScreen");
+  show("vaultScreen");
+  render();
+  resetIdle();
+}
+
+async function updatePasskeyUI(){
+  const cfg=await dbGetKey(PASSKEY_KEY);
+  const btn=$("passkeyUnlockBtn");
+  const manage=$("passkeyManageBtn");
+  const status=$("passkeyStatus");
+  if(btn) btn.classList.toggle("hidden",!cfg);
+  if(status){
+    if(cfg) status.textContent="🔑 パスキー登録済み";
+    else status.textContent=passkeySupported()
+      ?"パスキーを登録すると、指紋・顔認証などで解除できます。"
+      :"このブラウザではパスキー解除を利用できません。";
+  }
+  if(manage) manage.textContent=cfg?"🔑 パスキー登録済み":"🔑 パスキー登録";
+}
+
 async function setupVault(){
   const p=$("setupPassword").value, p2=$("setupPassword2").value;
   $("setupError").textContent="";
   if(p.length<10){$("setupError").textContent="マスターパスワードは10文字以上にしてください。";return;}
   if(p!==p2){$("setupError").textContent="2つのパスワードが一致しません。";return;}
-  const encrypted=await encryptVault({entries:[]},p);
+  const encrypted=await encryptVault({entries:[],viewHistory:[]},p);
   await dbPut(encrypted);
   $("setupPassword").value=$("setupPassword2").value="";
   hide("setupScreen"); show("lockScreen");
   $("lockMessage").textContent="金庫を作成しました。マスターパスワードで解除してください。";
+}
+
+
+function ensureViewHistory(){
+  if(!Array.isArray(vault.viewHistory)) vault.viewHistory=[];
+}
+
+function formatViewDate(iso){
+  const d=new Date(iso);
+  if(Number.isNaN(d.getTime())) return "日時不明";
+  return new Intl.DateTimeFormat("ja-JP",{
+    year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit",second:"2-digit"
+  }).format(d);
+}
+
+function updateViewHistoryUI(){
+  ensureViewHistory();
+  const now=new Date();
+  const today=vault.viewHistory.filter(item=>{
+    const t=new Date(item.at);
+    return !Number.isNaN(t.getTime()) &&
+      t.getFullYear()===now.getFullYear() &&
+      t.getMonth()===now.getMonth() &&
+      t.getDate()===now.getDate();
+  });
+  $("todayViewCount").textContent=`${today.length}回`;
+  $("lastViewedAt").textContent=vault.viewHistory[0]
+    ? `最終閲覧：${formatViewDate(vault.viewHistory[0].at)}`
+    : "最終閲覧：—";
+}
+
+function renderViewHistoryList(){
+  ensureViewHistory();
+  const box=$("historyItems");
+  box.innerHTML="";
+  if(!vault.viewHistory.length){
+    box.innerHTML='<div class="muted history-empty">閲覧履歴はありません</div>';
+    return;
+  }
+  for(const item of vault.viewHistory){
+    const row=document.createElement("div");
+    row.className="history-row";
+    row.textContent=`🔓 ${formatViewDate(item.at)}`;
+    box.appendChild(row);
+  }
+}
+
+async function recordView(){
+  ensureViewHistory();
+  vault.viewHistory.unshift({at:new Date().toISOString()});
+  if(vault.viewHistory.length>MAX_VIEW_HISTORY) vault.viewHistory.length=MAX_VIEW_HISTORY;
+  await persist();
+  updateViewHistoryUI();
 }
 
 async function unlock(){
@@ -102,7 +360,9 @@ async function unlock(){
     const record=await dbGet();
     const result=await decryptVault(record,p);
     vault=result.data; masterKey=result.key;
+    ensureViewHistory();
     failedAttempts=0; lockoutUntil=0; $("masterPassword").value="";
+    await recordView();
     hide("lockScreen"); show("vaultScreen"); render(); resetIdle();
   }catch(e){
     failedAttempts++;
@@ -117,6 +377,7 @@ function lock(){
   vault={entries:[]}; masterKey=null; editingId=null;
   hide("editorScreen"); hide("vaultScreen"); show("lockScreen");
   $("lockError").textContent=""; $("masterPassword").value="";
+  $("viewHistoryList").classList.add("hidden");
   clearTimeout(idleTimer);
 }
 
@@ -175,6 +436,7 @@ async function persistWithLiveKey(){
 }
 
 function render(){
+  updateViewHistoryUI();
   const list=$("entryList");
   const items=currentCategory==="all"?vault.entries:vault.entries.filter(e=>e.category===currentCategory);
   $("categoryLabel").textContent=currentCategory==="all"?"すべて":currentCategory;
@@ -190,8 +452,49 @@ function render(){
   }
 }
 
+$("viewHistoryBtn").onclick=()=>{
+  renderViewHistoryList();
+  show("viewHistoryList");
+};
+$("closeHistoryBtn").onclick=()=>hide("viewHistoryList");
+
+
+$("passkeyUnlockBtn").onclick=async()=>{
+  $("lockError").textContent="パスキーを確認中…";
+  try{
+    await unlockWithPasskey();
+    $("lockError").textContent="";
+  }catch(e){
+    $("lockError").textContent=e?.message||"パスキー解除に失敗しました。";
+  }
+};
+
+$("passkeyManageBtn").onclick=async()=>{
+  try{
+    if(!masterKey){
+      alert("先にマスターパスワードで金庫を解除してください。");
+      return;
+    }
+    const existing=await dbGetKey(PASSKEY_KEY);
+    if(existing){
+      const remove=confirm("登録済みのパスキーを削除しますか？\n\n削除してもマスターパスワードはそのまま使えます。");
+      if(remove){
+        await dbDeleteKey(PASSKEY_KEY);
+        updatePasskeyUI();
+        alert("パスキー登録を削除しました。");
+      }
+      return;
+    }
+    await registerPasskey();
+    alert("パスキーを登録しました。次回からパスキーで解除できます。");
+  }catch(e){
+    alert(e?.message||"パスキー登録に失敗しました。");
+  }
+};
+
 async function init(){
   if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  await updatePasskeyUI();
   const exists=await hasVault();
   if(exists){hide("setupBtn");$("lockMessage").textContent="マスターパスワードでロック解除してください。";}
   else {show("setupBtn");$("lockMessage").textContent="まだ金庫がありません。初回設定から作成してください。";}
