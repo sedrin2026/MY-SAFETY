@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090b0e">
+  <meta name="description" content="端末内だけで使う暗号化パスワード管理PWA">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css">
+  <title>MY SAFE</title>
+</head>
+<body>
+<main id="app" class="app">
+
+  <!-- ロック画面 -->
+  <section id="lockScreen" class="screen lock-screen">
+    <div class="lock-card">
+      <div class="lock-icon">🔐</div>
+      <div class="brand">MY SAFE</div>
+      <div class="brand-sub">PERSONAL SECURE VAULT</div>
+
+      <div class="lock-title">マスターパスワードでロック解除</div>
+      <p id="lockMessage" class="muted center">自分専用の暗号化セーフ</p>
+
+      <div class="password-wrap">
+        <input id="masterPassword" class="input password-input"
+               type="password" autocomplete="current-password"
+               placeholder="マスターパスワード" enterkeyhint="go">
+        <button id="toggleMasterPassword" class="show-password" type="button">表示する</button>
+      </div>
+
+      <button id="unlockBtn" class="primary">ロック解除</button>
+      <button id="passkeyUnlockBtn" class="secondary hidden" type="button">🔑 PINコードで解除</button>
+      <button id="setupBtn" class="secondary hidden" type="button">初回設定</button>
+
+      <p id="passkeyStatus" class="tiny passkey-status"></p>
+      <p id="lockError" class="error"></p>
+    </div>
+  </section>
+
+  <!-- 初回設定 -->
+  <section id="setupScreen" class="screen hidden">
+    <div class="setup-card">
+      <div class="lock-icon">🔐</div>
+      <div class="brand">MY SAFE</div>
+      <div class="brand-sub">CREATE YOUR VAULT</div>
+      <h1>初回設定</h1>
+      <p class="muted center">マスターパスワードは保存しません。忘れると復元できません。</p>
+
+      <div class="password-wrap">
+        <input id="setupPassword" class="input password-input"
+               type="password" autocomplete="new-password"
+               placeholder="マスターパスワード">
+        <button id="toggleSetupPassword" class="show-password" type="button">表示する</button>
+      </div>
+
+      <div class="password-wrap">
+        <input id="setupPassword2" class="input password-input"
+               type="password" autocomplete="new-password"
+               placeholder="もう一度入力">
+        <button id="toggleSetupPassword2" class="show-password" type="button">表示する</button>
+      </div>
+
+      <button id="createVaultBtn" class="primary">金庫を作成</button>
+      <button id="backLockBtn" class="secondary">戻る</button>
+      <p id="setupError" class="error"></p>
+    </div>
+  </section>
+
+  <!-- 金庫本体 -->
+  <section id="vaultScreen" class="hidden vault-screen">
+    <header class="topbar">
+      <div class="brand-area">
+        <div class="mini-icon">🔐</div>
+        <div>
+          <strong>MY SAFE</strong>
+          <span id="categoryLabel" class="muted">すべて</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="passkeyManageBtn" class="small" type="button">🔑 PINコード設定</button>
+        <button id="lockBtn" class="small danger-soft" type="button">🔒 ロック</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-category="all">すべて</button>
+      <button class="tab" data-category="アプリ">📱 アプリ</button>
+      <button class="tab" data-category="銀行">🏦 銀行</button>
+      <button class="tab" data-category="カード">💳 カード</button>
+    </nav>
+
+    <main class="main-content">
+      <section id="viewHistory" class="view-history">
+        <div class="view-history-main">
+          <div>
+            <div class="section-kicker">SECURITY ACTIVITY</div>
+            <span class="view-history-title">🔐 本日の閲覧回数</span>
+          </div>
+          <strong id="todayViewCount">0回</strong>
+        </div>
+        <div id="lastViewedAt" class="view-history-last">最終閲覧：—</div>
+        <button id="viewHistoryBtn" class="small history-btn" type="button">履歴を見る</button>
+      </section>
+
+      <section id="viewHistoryList" class="view-history-list hidden">
+        <div class="view-history-list-head">
+          <strong>📋 閲覧履歴</strong>
+          <button id="closeHistoryBtn" class="small" type="button">閉じる</button>
+        </div>
+        <div id="historyItems"></div>
+      </section>
+
+      <section id="entryList" class="entries"></section>
+    </main>
+
+    <button id="addBtn" class="fab" type="button">＋ 新規登録</button>
+  </section>
+
+  <!-- 登録・編集 -->
+  <section id="editorScreen" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <div>
+          <div class="section-kicker">SECURE ENTRY</div>
+          <h2 id="editorTitle">新規登録</h2>
+        </div>
+        <button id="closeEditorBtn" class="small" type="button">✕</button>
+      </div>
+
+      <label>カテゴリ
+        <select id="f_category" class="input">
+          <option>アプリ</option>
+          <option>銀行</option>
+          <option>カード</option>
+        </select>
+      </label>
+
+      <div id="commonFields">
+        <label>アプリ名 / サービス名<input id="f_appName" class="input" autocomplete="off"></label>
+        <label>ログインID<input id="f_loginId" class="input" autocomplete="off"></label>
+
+        <label>パスワード
+          <div class="pwrow">
+            <input id="f_password" class="input" type="password" autocomplete="off">
+            <button id="togglePw" class="small" type="button">表示</button>
+          </div>
+        </label>
+
+        <label>登録メアド<input id="f_email" class="input" type="email" autocomplete="off"></label>
+        <label>登録電話番号<input id="f_phone" class="input" autocomplete="off"></label>
+        <label>登録住所<input id="f_address" class="input" autocomplete="off"></label>
+        <label>登録者名<input id="f_holder" class="input" autocomplete="off"></label>
+        <label>アカウント名<input id="f_accountName" class="input" autocomplete="off"></label>
+        <label>カード番号<input id="f_cardNumber" class="input" inputmode="numeric" autocomplete="off"></label>
+        <label>有効期限<input id="f_expiry" class="input" placeholder="MM/YY" autocomplete="off"></label>
+        <label>CVV<input id="f_cvv" class="input" type="password" inputmode="numeric" autocomplete="off"></label>
+      </div>
+
+      <div class="actions">
+        <button id="saveEntryBtn" class="primary">保存</button>
+        <button id="deleteEntryBtn" class="danger hidden">削除</button>
+      </div>
+      <p class="tiny">※端末内保存・暗号化を前提とした第1版です。実データ投入前にダミーデータで確認してください。</p>
+    </div>
+  </section>
+
+  <!-- 既存の暗号化・IndexedDB・PIN/WebAuthnロジックはそのまま使用 -->
+  <script src="./app.js" defer></script>
+  <script src="./ui-enhancements.js" defer></script>
+</main>
+</body>
+</html>
