@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MY SAFE</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ロック画面 -->
+  <section id="lockScreen" class="container">
+    <div style="text-align: center; padding: 40px 0;">
+      <h1 style="font-size: 2rem;">MY SAFE</h1>
+      <p style="color: var(--text-muted);">あなたの大切な情報を安全に管理</p>
+      <!-- ロックアイコンの配置 (CSSで円形のエフェクトを作る) -->
+      <div style="width: 150px; height: 150px; border: 2px solid var(--accent-cyan); border-radius: 50%; margin: 30px auto; display: flex; align-items: center; justify-content: center; font-size: 50px;">🔐</div>
+    </div>
+
+    <div class="card">
+      <label>ロック解除</label>
+      <input type="password" class="input-field" placeholder="マスターパスワードを入力">
+      <label style="margin-top: 10px; display: block;">
+        <input type="checkbox"> パスワードを表示する
+      </label>
+      <button class="btn-primary" style="margin-top: 20px;">ロック解除</button>
+      
+      <div style="text-align: center; margin: 20px 0;">または</div>
+      <button class="btn-secondary">🔢 PINコードで解除</button>
+    </div>
+  </section>
+
+  <!-- メイン画面（ロック解除後） -->
+  <section id="vaultScreen" class="container" style="display:none;">
+    <header style="display: flex; justify-content: space-between; align-items: center;">
+      <h1>MY SAFE</h1>
+      <div>🔍 ⚙️</div>
+    </header>
+
+    <div style="display: flex; gap: 10px; margin: 20px 0;">
+      <div class="card" style="flex: 1;">🔢 PINコード認証</div>
+      <div class="card" style="flex: 1;">🔒 ロックする</div>
+    </div>
+
+    <!-- カテゴリチップ -->
+    <div style="display: flex; gap: 10px; overflow-x: auto; margin-bottom: 20px;">
+      <button class="btn-secondary">すべて</button>
+      <button class="btn-secondary">アプリ</button>
+      <button class="btn-secondary">銀行</button>
+      <button class="btn-secondary">カード</button>
+    </div>
+
+    <!-- 閲覧回数 -->
+    <div class="card">
+      <div>本日の閲覧回数: 4回</div>
+      <div>最終閲覧: 2026/08/15</div>
+    </div>
+  </section>
+
+</body>
+</html>

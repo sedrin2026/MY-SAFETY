@@ -1,0 +1,76 @@
+
+/* MY-SAFE Design System */
+:root {
+  --bg-dark: #090b0e;
+  --card-bg: #12151a;
+  --accent-blue: #2a72ff;
+  --accent-cyan: #00f2ff;
+  --border-subtle: #242b36;
+  --text-main: #f0f4f8;
+  --text-muted: #8b99a9;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* カード型UIの定義 */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 20px;
+}
+
+/* ボタン */
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), #1e56c5);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  border-radius: 12px;
+  padding: 16px;
+  width: 100%;
+}
+
+/* 入力欄 */
+.input-field {
+  background: #0f1217;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px;
+  color: white;
+  width: 100%;
+}
+
+/* レイアウト */
+.container {
+  padding: 20px;
+  max-width: 500px;
+  margin: auto;
+}
+
+.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--accent-blue);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 50px;
+  box-shadow: 0 5px 15px rgba(42, 114, 255, 0.4);
+}
