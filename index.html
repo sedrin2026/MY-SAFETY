@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <meta name="description" content="端末内だけで使う暗号化パスワード管理PWA">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css">
+  <title>MY SAFE</title>
+</head>
+<body>
+  <main id="app" class="app">
+    <section id="lockScreen" class="screen">
+      <div class="brand">🔐 MY SAFE</div>
+      <p id="lockMessage" class="muted">自分専用の暗号化セーフ</p>
+      <input id="masterPassword" class="input" type="password" autocomplete="current-password"
+             placeholder="マスターパスワード" enterkeyhint="go">
+      <button id="unlockBtn" class="primary">ロック解除</button>
+      <button id="setupBtn" class="secondary hidden">初回設定</button>
+      <p id="lockError" class="error"></p>
+    </section>
+
+    <section id="setupScreen" class="screen hidden">
+      <div class="brand">🔐 MY SAFE</div>
+      <h1>初回設定</h1>
+      <p class="muted">このパスワードは保存しません。忘れると復元できません。</p>
+      <input id="setupPassword" class="input" type="password" autocomplete="new-password" placeholder="マスターパスワード">
+      <input id="setupPassword2" class="input" type="password" autocomplete="new-password" placeholder="もう一度入力">
+      <button id="createVaultBtn" class="primary">金庫を作成</button>
+      <button id="backLockBtn" class="secondary">戻る</button>
+      <p id="setupError" class="error"></p>
+    </section>
+
+    <section id="vaultScreen" class="hidden">
+      <header class="topbar">
+        <div>
+          <strong>🔐 MY SAFE</strong>
+          <span id="categoryLabel" class="muted">すべて</span>
+        </div>
+        <button id="lockBtn" class="small">🔒 ロック</button>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab active" data-category="all">すべて</button>
+        <button class="tab" data-category="アプリ">📱 アプリ</button>
+        <button class="tab" data-category="銀行">🏦 銀行</button>
+        <button class="tab" data-category="カード">💳 カード</button>
+      </nav>
+
+      <section id="entryList" class="entries"></section>
+
+      <button id="addBtn" class="fab">＋ 新規登録</button>
+    </section>
+
+    <section id="editorScreen" class="modal hidden">
+      <div class="modalCard">
+        <div class="modalHead">
+          <h2 id="editorTitle">新規登録</h2>
+          <button id="closeEditorBtn" class="small">✕</button>
+        </div>
+
+        <label>カテゴリ
+          <select id="f_category" class="input">
+            <option>アプリ</option>
+            <option>銀行</option>
+            <option>カード</option>
+          </select>
+        </label>
+
+        <div id="commonFields">
+          <label>アプリ名 / サービス名<input id="f_appName" class="input" autocomplete="off"></label>
+          <label>ログインID<input id="f_loginId" class="input" autocomplete="off"></label>
+          <label>パスワード<div class="pwrow"><input id="f_password" class="input" type="password" autocomplete="off"><button id="togglePw" class="small">表示</button></div></label>
+          <label>登録メアド<input id="f_email" class="input" type="email" autocomplete="off"></label>
+          <label>登録電話番号<input id="f_phone" class="input" autocomplete="off"></label>
+          <label>登録住所<input id="f_address" class="input" autocomplete="off"></label>
+          <label>登録者名<input id="f_holder" class="input" autocomplete="off"></label>
+          <label>アカウント名<input id="f_accountName" class="input" autocomplete="off"></label>
+          <label>カード番号<input id="f_cardNumber" class="input" inputmode="numeric" autocomplete="off"></label>
+          <label>有効期限<input id="f_expiry" class="input" placeholder="MM/YY" autocomplete="off"></label>
+          <label>CVV<input id="f_cvv" class="input" type="password" inputmode="numeric" autocomplete="off"></label>
+        </div>
+
+        <div class="actions">
+          <button id="saveEntryBtn" class="primary">保存</button>
+          <button id="deleteEntryBtn" class="danger hidden">削除</button>
+        </div>
+        <p class="tiny">※第1版は端末内保存のみ。実データ投入前に必ずダミーデータでテストしてください。</p>
+      </div>
+    </section>
+  </main>
+  <script src="./app.js" defer></script>
+</body>
+</html>
