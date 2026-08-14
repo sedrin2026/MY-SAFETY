@@ -1,3 +1,11 @@
+/*
+ MY SAFE v1
+ - No server / no fetch / no analytics
+ - Vault data stored in IndexedDB only
+ - Vault payload encrypted with AES-GCM
+ - Master password is never stored
+ - Key derived with PBKDF2-SHA-256
+*/
 const DB_NAME = "my-safe-db";
 const DB_VERSION = 1;
 const STORE = "vault";
@@ -119,30 +127,25 @@ function resetIdle(){
 ["click","touchstart","keydown","pointerdown"].forEach(ev=>document.addEventListener(ev,()=>{if(masterKey)resetIdle();},{passive:true}));
 
 function clearForm(){
-  ["f_appName","f_loginId","f_password","f_email","f_phone","f_address","f_holder","f_accountName","f_cardNumber","f_expiry","f_cvv","f_memo"].forEach(id=>{if($(id))$(id).value="";});
-  if($("f_category"))$("f_category").value="アプリ"; 
-  if($("f_password"))$("f_password").type="password"; 
+  ["f_appName","f_loginId","f_password","f_email","f_phone","f_address","f_holder","f_accountName","f_cardNumber","f_expiry","f_cvv"].forEach(id=>$(id).value="");
+  $("f_category").value="アプリ"; $("f_password").type="password"; $("togglePw").textContent="表示";
 }
 function openEditor(entry=null){
   editingId=entry?.id||null; clearForm();
   $("editorTitle").textContent=entry?"編集":"新規登録";
-  if($("deleteEntryBtn")) $("deleteEntryBtn").classList.toggle("hidden",!entry);
+  $("deleteEntryBtn").classList.toggle("hidden",!entry);
   if(entry){
-    for(const [k,id] of Object.entries({category:"f_category",appName:"f_appName",loginId:"f_loginId",password:"f_password",email:"f_email",phone:"f_phone",address:"f_address",holder:"f_holder",accountName:"f_accountName",cardNumber:"f_cardNumber",expiry:"f_expiry",cvv:"f_cvv"})){
-      if($(id)) $(id).value=entry[k]||"";
-    }
+    for(const [k,id] of Object.entries({category:"f_category",appName:"f_appName",loginId:"f_loginId",password:"f_password",email:"f_email",phone:"f_phone",address:"f_address",holder:"f_holder",accountName:"f_accountName",cardNumber:"f_cardNumber",expiry:"f_expiry",cvv:"f_cvv"})) $(id).value=entry[k]||"";
   }
-  hide("vaultScreen"); show("editorScreen");
+  show("editorScreen");
 }
 function readForm(){
   return {
-    id:editingId||uuid(), 
-    category:$("f_category")?$("f_category").value:"アプリ", 
-    appName:$("f_appName")?$("f_appName").value.trim():"",
-    loginId:$("f_loginId")?$("f_loginId").value:"", 
-    password:$("f_password")?$("f_password").value:"", 
-    email:$("f_email")?$("f_email").value:"",
-    phone:"", address:"", holder:"", accountName:"", cardNumber:"", expiry:"", cvv:""
+    id:editingId||uuid(), category:$("f_category").value, appName:$("f_appName").value.trim(),
+    loginId:$("f_loginId").value, password:$("f_password").value, email:$("f_email").value,
+    phone:$("f_phone").value, address:$("f_address").value, holder:$("f_holder").value,
+    accountName:$("f_accountName").value, cardNumber:$("f_cardNumber").value,
+    expiry:$("f_expiry").value, cvv:$("f_cvv").value
   };
 }
 async function saveEntry(){
@@ -150,15 +153,17 @@ async function saveEntry(){
   if(!e.appName){alert("サービス名・アプリ名を入力してください。");return;}
   const idx=vault.entries.findIndex(x=>x.id===e.id);
   if(idx>=0)vault.entries[idx]=e; else vault.entries.unshift(e);
-  await persist(); hide("editorScreen"); show("vaultScreen"); render();
+  await persist(); hide("editorScreen"); render();
 }
 async function deleteEntry(){
   if(!editingId)return;
   if(!confirm("この登録を削除しますか？"))return;
   vault.entries=vault.entries.filter(e=>e.id!==editingId);
-  await persist(); hide("editorScreen"); show("vaultScreen"); render();
+  await persist(); hide("editorScreen"); render();
 }
 async function persist(){
+  // The master password is never kept in an input after unlock.
+  // Re-encrypt using the CryptoKey held only in memory for this session.
   await persistWithLiveKey();
 }
 async function persistWithLiveKey(){
@@ -171,60 +176,38 @@ async function persistWithLiveKey(){
 
 function render(){
   const list=$("entryList");
-  if(!list)return;
   const items=currentCategory==="all"?vault.entries:vault.entries.filter(e=>e.category===currentCategory);
-  if($("categoryLabel")) $("categoryLabel").textContent=currentCategory==="all"?"すべて":currentCategory;
+  $("categoryLabel").textContent=currentCategory==="all"?"すべて":currentCategory;
   list.innerHTML="";
   if(!items.length){list.innerHTML='<div class="muted" style="padding:30px;text-align:center">登録はありません</div>';return;}
   for(const e of items){
     const div=document.createElement("article"); div.className="entry";
-    
-    const infoDiv=document.createElement("div");
-    const title=document.createElement("h3"); title.style.margin="0 0 4px 0"; title.style.fontSize="16px"; title.textContent=e.appName;
-    const cat=document.createElement("small"); cat.className="muted"; cat.textContent=`${e.category} ・ ${e.loginId || 'ID未設定'}`;
-    infoDiv.append(title,cat);
-
+    const title=document.createElement("h3"); title.textContent=e.appName;
+    const cat=document.createElement("small"); cat.textContent=e.category;
     const btn=document.createElement("button"); btn.className="small"; btn.textContent="開く";
     btn.onclick=()=>openEditor(e);
-    
-    div.append(infoDiv,btn); 
-    list.appendChild(div);
+    div.append(title,cat,document.createElement("br"),btn); list.appendChild(div);
   }
 }
 
 async function init(){
   if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
   const exists=await hasVault();
-  if(exists){hide("setupBtn");}
-  else {show("setupBtn");}
+  if(exists){hide("setupBtn");$("lockMessage").textContent="マスターパスワードでロック解除してください。";}
+  else {show("setupBtn");$("lockMessage").textContent="まだ金庫がありません。初回設定から作成してください。";}
 }
 
-if($("setupBtn")) $("setupBtn").onclick=()=>{hide("lockScreen");show("setupScreen");};
-if($("backLockBtn")) $("backLockBtn").onclick=()=>{hide("setupScreen");show("lockScreen");};
-if($("createVaultBtn")) $("createVaultBtn").onclick=setupVault;
-if($("unlockBtn")) $("unlockBtn").onclick=unlock;
-if($("masterPassword")) $("masterPassword").addEventListener("keydown",e=>{if(e.key==="Enter")unlock();});
-if($("lockBtn")) $("lockBtn").onclick=lock;
-if($("addBtn")) $("addBtn").onclick=()=>openEditor();
-if($("closeEditorBtn")) $("closeEditorBtn").onclick=()=>{hide("editorScreen");show("vaultScreen");};
-if($("saveEntryBtn")) $("saveEntryBtn").onclick=saveEntry;
-if($("deleteEntryBtn")) $("deleteEntryBtn").onclick=deleteEntry;
-
-if($("togglePw")) {
-  $("togglePw").onclick=()=>{
-    const i=$("masterPassword");
-    i.type=i.type==="password"?"text":"password";
-    $("togglePw").textContent=i.type==="password"?"表示":"隠す";
-  };
-}
-
-if($("showPasswordCheck")) {
-  $("showPasswordCheck").onchange=(e)=>{
-    const i=$("masterPassword");
-    i.type=e.target.checked?"text":"password";
-  };
-}
-
+$("setupBtn").onclick=()=>{hide("lockScreen");show("setupScreen");};
+$("backLockBtn").onclick=()=>{hide("setupScreen");show("lockScreen");};
+$("createVaultBtn").onclick=setupVault;
+$("unlockBtn").onclick=unlock;
+$("masterPassword").addEventListener("keydown",e=>{if(e.key==="Enter")unlock();});
+$("lockBtn").onclick=lock;
+$("addBtn").onclick=()=>openEditor();
+$("closeEditorBtn").onclick=()=>hide("editorScreen");
+$("saveEntryBtn").onclick=saveEntry;
+$("deleteEntryBtn").onclick=deleteEntry;
+$("togglePw").onclick=()=>{const i=$("f_password");i.type=i.type==="password"?"text":"password";$("togglePw").textContent=i.type==="password"?"表示":"隠す";};
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");
   currentCategory=b.dataset.category;render();
