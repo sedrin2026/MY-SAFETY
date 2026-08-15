@@ -16,38 +16,33 @@
       <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
       <div class="lock-shell">
         <div class="brand-block">
+          <div class="brand-mark">⌁</div>
           <div class="brand">MY SAFE</div>
           <p class="brand-sub">あなたの大切な情報を安全に管理</p>
         </div>
 
-        <div class="lock-orbit" aria-hidden="true">
-          <div class="orbit orbit-1"></div><div class="orbit orbit-2"></div><div class="orbit orbit-3"></div>
-          <div class="lock-symbol">🔒</div>
+        <!-- 新しい画像に置き換え -->
+        <div class="lock-graphic-wrap">
+          <img src="./lock-bg.png" alt="Secure Lock" class="lock-graphic" width="285" height="285">
         </div>
 
         <div class="auth-card">
-          <div class="section-title"><span class="title-icon">🛡️</span><span>ロック解除</span></div>
+          <div class="section-title"><span class="title-icon">◈</span><span>ロック解除</span></div>
           <div class="input-wrap">
             <input id="masterPassword" class="input" type="password" autocomplete="current-password"
-              placeholder="マスターパスワードを入力" enterkeyhint="go">
-            <button id="toggleMasterPassword" class="icon-btn" type="button" aria-label="パスワードを表示">👁️‍🗨️</button>
+              placeholder="マスターパスワード" enterkeyhint="go">
+            <button id="toggleMasterPassword" class="icon-btn" type="button" aria-label="パスワードを表示">◉</button>
           </div>
           <label class="check-row"><input id="showMasterPassword" type="checkbox"><span>パスワードを表示する</span></label>
-          <button id="unlockBtn" class="primary glow-btn"><span style="vertical-align:-1px;margin-right:4px;">🛡️</span> ロック解除</button>
+          <button id="unlockBtn" class="primary glow-btn"><span>◈</span> ロック解除</button>
           <div class="or-divider"><span>または</span></div>
-          <button id="passkeyUnlockBtn" class="secondary passkey-btn hidden" type="button"><span class="pin-icon">🔑</span> PINコードで解除</button>
+          <button id="passkeyUnlockBtn" class="secondary passkey-btn hidden" type="button"><span class="pin-icon">⌘</span> PINコードで解除</button>
           <button id="setupBtn" class="secondary hidden" type="button">初回設定</button>
           <p id="passkeyStatus" class="tiny status-line"></p>
           <p id="lockError" class="error"></p>
         </div>
 
-        <div class="security-tip">
-          <span>🛡️</span>
-          <div>
-            <strong>セキュリティのヒント</strong>
-            <p>マスターパスワードとPINコードの併用で、より安全に保護されます。</p>
-          </div>
-        </div>
+        <div class="security-tip"><span>◈</span><div><strong>セキュリティのヒント</strong><p>マスターパスワードと端末のPINコードを併用して、より安全に保護できます。</p></div></div>
       </div>
     </section>
 
