@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#030914">
   <meta name="description" content="端末内だけで使う暗号化パスワード管理PWA">
-  <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css">
+  <!-- キャッシュを強制回避するためバージョンを付与 -->
+  <link rel="manifest" href="./manifest.json?v=3">
+  <link rel="stylesheet" href="./style.css?v=3">
   <title>MY SAFE</title>
 </head>
 <body>
@@ -21,9 +22,9 @@
           <p class="brand-sub">あなたの大切な情報を安全に管理</p>
         </div>
 
-        <!-- 新しい画像に置き換え -->
+        <!-- 新しい画像に置換 (lock-bg.png) -->
         <div class="lock-graphic-wrap">
-          <img src="./lock-bg.png" alt="Secure Lock" class="lock-graphic" width="285" height="285">
+          <img src="./lock-bg.png?v=3" alt="Secure Lock" class="lock-graphic" width="285" height="285">
         </div>
 
         <div class="auth-card">
@@ -127,7 +128,7 @@
       </div>
     </section>
   </main>
-  <script src="./app.js" defer></script>
-  <script src="./ui-enhancements.js" defer></script>
+  <script src="./app.js?v=3" defer></script>
+  <script src="./ui-enhancements.js?v=3" defer></script>
 </body>
 </html>
